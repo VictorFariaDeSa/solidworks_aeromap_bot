@@ -1,45 +1,74 @@
 from pyautogui import *
+import keyboard
 import time
 import pandas as pd
 import pyperclip
+import cv2
 
 def point_click(image,time=0,side='left',deslocx=0,deslocy=0,number=1):
     while True:
-        if locateOnScreen(image) != None:
-            x,y = locateCenterOnScreen(image)
+        if locateOnScreen(image,confidence=0.9) != None:
+            x,y = locateCenterOnScreen(image,confidence=0.9)
             click(x=x+deslocx,y=y+deslocy,button=side,clicks=number)
             sleep(time)
             break
 
-def check_swap_direction(image,value,deslocx=0,deslocy=0):
-    if locateOnScreen(image) != None and value < 0:
-        x,y = locateOnScreen(image)
-        click(x=x+deslocx,y=y+deslocy) 
+def check_swap_direction(value,deslocx=-50,deslocy=0):
+    if float(value) < 0:
+        sleep(1)    
+        if locateOnScreen('uncheck_inverter_dimensao.png',confidence=0.9) != None:
+            x,y = locateCenterOnScreen('uncheck_inverter_dimensao.png',confidence=0.9)
+            click(x=x+deslocx,y=y+deslocy)
+        return str(abs(float(value)))
+    else:
+        sleep(1)
+        if locateOnScreen('check_inverter_dimensao.png',confidence=0.9) != None:
+            print('check localizado com sucesso')
+            x,y = locateCenterOnScreen('check_inverter_dimensao.png',confidence=0.9)
+            click(x=x+deslocx,y=y+deslocy)
+        return value
+
+           
+
+
+def insert_text(image,text,deslocx=0,deslocy=0,time=0.5):
+    while True:
+        if locateOnScreen(image) != None:
+            x,y = locateCenterOnScreen(image)
+            click(x=x+deslocx,y=y+deslocy)
+            sleep(time)
+            write(text)
+            sleep(time)
+            break    
 
 def standart_procedure(main_image,input_image,check_image,value):
     point_click(main_image,side = 'right')
     point_click('editar_recurso.png')
-    check_swap_direction(check_image,value,deslocx= 'inserir desloc', deslocy = 'inserir desloc')
+
+    if check_image == True:
+        value = check_swap_direction(value)
     point_click(input_image,deslocx = 100,number=2)
     write(value)
+    #insert_text(input_image,text = value,deslocx= 'inserir desloc', deslocy = 'inserir desloc')
     point_click('check_menu.png')
-    point_click('check.png')
-    point_click('X_menu.png')
+    press('enter')
+    press('enter')
 
 def save_file(name,path):
     point_click('Arquivo.png')
     point_click('Salvar_como.png')
     write(name)
-    point_click('folder_name.png',deslocx=-100,number=1)
+    point_click('folder_name.png',deslocx=-50,number=1)
     press('del')
     pyperclip.copy(path)
-    hotkey('cntl','v')
+    hotkey('ctrl','v')
     press('enter')
     point_click('Salvar.png')
 
+
 time.sleep(2)
 data = pd.read_excel('planejamento_mapa.xlsx',sheet_name= 'leitura_python')
-folder = f'C:\Users\savic\OneDrive\Área de Trabalho\automatização_setup'
+folder = r'C:\Users\savic\OneDrive\Área de Trabalho\automatização_setup\setups_cad'
 
 
 FRH = data['FRH']
@@ -57,11 +86,12 @@ for i in range(len(setups)):
     rrh = str(RRH[i])
     ang_dir = str(ANG_DIR[i])
     ang_esq = str(ANG_ESQ[i])
-
-    name = f'setup_FRH{FRH[i]}_RRH{RRH[i]}_volpos{VOL_POS[i]}°'
-    standart_procedure('FRH.png','distancia.png','Inverter_dimensao.png',frh)
-    standart_procedure('RRH.png','distancia.png','Inverter_dimensao.png',rrh)
-    standart_procedure('roda_direita.png','angulo.png','Inverter_dimensao.png',ang_dir)
-    standart_procedure('roda_esquerda.png','angulo.png','Inverter_dimensao.png',ang_esq)
+    if VOL_POS[i] < 0:
+        name = name = f'setup_FRH{FRH[i]}_RRH{RRH[i]}_volpos_neg_{VOL_POS[i]}°'
+    else:
+        name = f'setup_FRH{FRH[i]}_RRH{RRH[i]}_volpos{VOL_POS[i]}°'
+    standart_procedure('FRH.png','distancia.png',False,frh)
+    standart_procedure('RRH.png','distancia.png',False,rrh)
+    standart_procedure('roda_direita.png','angulo.png',True,ang_dir)
+    standart_procedure('roda_esquerda.png','angulo.png',True,ang_esq)
     save_file(name,folder)
-    point_click("Salvar.png")
